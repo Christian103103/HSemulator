@@ -9,27 +9,64 @@ function createCard(template) {
     attack: template.attack,
     hp: template.hp,
     maxHp: template.hp, // remember original health so we can restore between rounds
-    tier: template.tier || 1, // placeholder for future
+    tier: template.tier || 1,
     battlecry: template.battlecry,
     endOfTurn: template.endOfTurn,
+    onTavernUpgrade: template.onTavernUpgrade,
     reborn: template.reborn,
     usedReborn: false,
   };
 }
 
 const CARD_TEMPLATES = [
-  { name: "Test Card", attack: 1, hp: 1, tier: 1 },
-  { name: "Test 2", attack: 1, hp: 2, tier: 1 },
-  { name: "Wall", attack: 1, hp: 4, tier: 1 },
-  { name: "Glass Cannon", attack: 3, hp: 1, tier: 1 },
-  { name: "Glass Cannon 2", attack: 3, hp: 1, tier: 1 },
-  { name: "Brute", attack: 3, hp: 3, tier: 2 },
-  // New example cards with basic abilities
+  // Tier 1
   {
-    name: "Squire",
+    name: "Alleycat",
     attack: 1,
+    hp: 1,
+    tier: 1,
+    battlecry: (player) => {
+      if (player.board.length < BOARD_LIMIT) {
+        player.board.push(createCard({ name: "Tabbycat", attack: 1, hp: 1, tier: 1 }));
+      }
+    },
+  },
+  {
+    name: "Murloc Tidehunter",
+    attack: 2,
+    hp: 1,
+    tier: 1,
+    battlecry: (player) => {
+      if (player.board.length < BOARD_LIMIT) {
+        player.board.push(createCard({ name: "Murloc Scout", attack: 1, hp: 1, tier: 1 }));
+      }
+    },
+  },
+  {
+    name: "Deck Swabbie",
+    attack: 2,
     hp: 2,
     tier: 1,
+    battlecry: (player) => {
+      player.upgradeCost = Math.max(player.upgradeCost - 1, MIN_UPGRADE_COST);
+    },
+  },
+  {
+    name: "Evolving Chromawing",
+    attack: 1,
+    hp: 4,
+    tier: 1,
+    onTavernUpgrade: (player, self) => {
+      self.attack += 1;
+    },
+  },
+
+  // Tier 2
+  {
+    name: "Rockpool Hunter",
+    attack: 2,
+    hp: 3,
+    tier: 2,
     battlecry: (player, self) => {
       const targets = player.board.filter((c) => c.id !== self.id);
       if (targets.length) {
@@ -41,21 +78,32 @@ const CARD_TEMPLATES = [
     },
   },
   {
-    name: "Reborn Whelp",
+    name: "Nathrezim Overseer",
     attack: 2,
-    hp: 1,
+    hp: 3,
     tier: 2,
-    reborn: true,
+    battlecry: (player, self) => {
+      const targets = player.board.filter((c) => c.id !== self.id);
+      if (targets.length) {
+        const target = rand(targets);
+        target.attack += 2;
+        target.hp += 2;
+        target.maxHp += 2;
+      }
+    },
   },
   {
-    name: "Caretaker",
-    attack: 2,
+    name: "Micro Mummy",
+    attack: 1,
     hp: 2,
     tier: 2,
-    endOfTurn: (player) => {
-      player.board.forEach((c) => {
-        c.hp = Math.min(c.hp + 1, c.maxHp);
-      });
+    reborn: true,
+    endOfTurn: (player, self) => {
+      const targets = player.board.filter((c) => c.id !== self.id);
+      if (targets.length) {
+        const target = rand(targets);
+        target.attack += 1;
+      }
     },
   },
 ];
@@ -140,6 +188,7 @@ function renderZone(container, player, zoneName) {
     const abilityParts = [];
     if (card.battlecry) abilityParts.push("Battlecry");
     if (card.endOfTurn) abilityParts.push("EoT");
+    if (card.onTavernUpgrade) abilityParts.push("Upgrade");
     if (card.reborn) abilityParts.push("Reborn");
     const abilities = abilityParts.length
       ? `<div class="abilities">${abilityParts.join(", ")}</div>`
@@ -425,6 +474,10 @@ function handleUpgrade(playerId) {
 
   player.gold -= player.upgradeCost;
   player.tavernTier += 1;
+
+  player.board.forEach((c) => {
+    if (c.onTavernUpgrade) c.onTavernUpgrade(player, c);
+  });
 
   // After upgrading, disable future upgrades (only 2 tiers currently)
   player.upgradeCost = 0;
