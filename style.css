@@ -1,0 +1,78 @@
+body {
+  font-family: "Segoe UI", sans-serif;
+  margin: 20px;
+  background: #1e2124;
+  color: #eee;
+}
+
+.zone {
+  display: flex;
+  gap: 8px;
+  min-height: 120px;
+  padding: 10px;
+  background: #2e3338;
+  border-radius: 6px;
+}
+
+.card {
+  width: 80px;
+  height: 120px;
+  background: #3e4448;
+  border: 2px solid #aaa;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  transition: transform 0.3s;
+}
+
+.card:hover {
+  transform: scale(1.05);
+}
+
+.card .stats {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  font-size: 12px;
+}
+
+.fade-out {
+  animation: fadeOut 0.3s forwards;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+.players-container {
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+}
+
+.player {
+  flex: 1;
+}
+
+.stats {
+  margin-bottom: 8px;
+}
+
+.tavern-controls {
+  margin: 6px 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tavern-controls button {
+  padding: 4px 8px;
+  font-size: 12px;
+} 

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HS Battlegrounds Barebones Emulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Hearthstone Battlegrounds Emulator – Two-Player Prototype</h1>
+
+  <div id="players" class="players-container">
+    <!-- Player 1 -->
+    <div class="player" id="player-1">
+      <h2>Player 1</h2>
+      <div class="stats">Health: <span id="p1-health">30</span> | Gold: <span id="p1-gold">3</span></div>
+      <div class="tavern-controls">
+        Tavern Tier: <span id="p1-tier">1</span>
+        <button id="p1-refresh">Refresh (1g)</button>
+        <button id="p1-upgrade">Upgrade (5g)</button>
+      </div>
+      <h3>Shop</h3>
+      <div id="p1-shop" class="zone"></div>
+      <h3>Hand</h3>
+      <div id="p1-hand" class="zone"></div>
+      <h3>Board</h3>
+      <div id="p1-board" class="zone"></div>
+    </div>
+
+    <!-- Player 2 -->
+    <div class="player" id="player-2">
+      <h2>Player 2</h2>
+      <div class="stats">Health: <span id="p2-health">30</span> | Gold: <span id="p2-gold">3</span></div>
+      <div class="tavern-controls">
+        Tavern Tier: <span id="p2-tier">1</span>
+        <button id="p2-refresh">Refresh (1g)</button>
+        <button id="p2-upgrade">Upgrade (5g)</button>
+      </div>
+      <h3>Shop</h3>
+      <div id="p2-shop" class="zone"></div>
+      <h3>Hand</h3>
+      <div id="p2-hand" class="zone"></div>
+      <h3>Board</h3>
+      <div id="p2-board" class="zone"></div>
+    </div>
+  </div>
+
+  <button id="combat-button">Start Combat</button>
+  <div id="results"></div>
+
+  <script src="script.js"></script>
+</body>
+</html> 
