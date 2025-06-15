@@ -20,6 +20,40 @@ function createCard(template) {
 
 let CARD_TEMPLATES = [];
 
+// If loading the JSON file fails we fall back to this small set so the game
+// still works when running directly from the file system where fetch() may be
+// blocked.
+const FALLBACK_CARD_TEMPLATES = [
+  { name: 'Annoy-o-Tron', attack: 1, hp: 2, tier: 1 },
+  { name: 'Risen Rider', attack: 2, hp: 1, tier: 1, reborn: true },
+  { name: 'Scallywag', attack: 3, hp: 1, tier: 1 },
+  {
+    name: 'Southsea Busker',
+    attack: 3,
+    hp: 1,
+    tier: 1,
+    battlecry: (p) => {
+      p.gold += 1;
+    },
+  },
+  { name: 'Sun-Bacon Relaxer', attack: 2, hp: 3, tier: 1 },
+  { name: 'Wrath Weaver', attack: 1, hp: 4, tier: 1 },
+  {
+    name: 'Shell Collector',
+    attack: 4,
+    hp: 3,
+    tier: 2,
+    battlecry: (p) => {
+      p.gold += 1;
+    },
+  },
+  { name: 'Eternal Knight', attack: 5, hp: 1, tier: 2 },
+  { name: 'Ripsnarl Captain', attack: 2, hp: 4, tier: 2 },
+  { name: 'Scarlet Skull', attack: 2, hp: 1, tier: 2, reborn: true },
+  { name: 'Sellemental', attack: 3, hp: 3, tier: 2 },
+  { name: 'Selfless Hero', attack: 2, hp: 1, tier: 2 },
+];
+
 // Game constants
 const GOLD_PER_CARD = 3;
 // Gold increases by 1 per turn until it caps at 10
@@ -351,6 +385,10 @@ function rand(arr) {
 // Refresh shop for a player with 3 random cards
 function refreshShop(player) {
   const templates = CARD_TEMPLATES.filter((t) => t.tier <= player.tavernTier);
+  if (!templates.length) {
+    player.shop = [];
+    return;
+  }
   player.shop = Array.from({ length: 3 }, () => createCard(rand(templates)));
 }
 // Initial shop refresh
@@ -401,20 +439,43 @@ function handleUpgrade(playerId) {
 
 // Load real card data and then start the game
 async function loadTemplates() {
-  const res = await fetch('bg_minions_active.json');
-  const data = await res.json();
-  const map = new Map(data.data.map(m => [m.name, m]));
-  const pick = (name) => {
-    const m = map.get(name);
-    if (!m) return null;
-    const t = { name: m.name, attack: m.attack, hp: m.health, tier: m.tier };
-    if (name === 'Risen Rider' || name === 'Scarlet Skull') t.reborn = true;
-    if (name === 'Shell Collector' || name === 'Southsea Busker') t.battlecry = (p) => { p.gold += 1; };
-    return t;
-  };
-  const tier1 = ['Annoy-o-Tron','Risen Rider','Scallywag','Southsea Busker','Sun-Bacon Relaxer','Wrath Weaver'];
-  const tier2 = ['Shell Collector','Eternal Knight','Ripsnarl Captain','Scarlet Skull','Sellemental','Selfless Hero'];
-  CARD_TEMPLATES = [...tier1, ...tier2].map(pick).filter(Boolean);
+  try {
+    const res = await fetch('bg_minions_active.json');
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const data = await res.json();
+    const map = new Map(data.data.map((m) => [m.name, m]));
+    const pick = (name) => {
+      const m = map.get(name);
+      if (!m) return null;
+      const t = { name: m.name, attack: m.attack, hp: m.health, tier: m.tier };
+      if (name === 'Risen Rider' || name === 'Scarlet Skull') t.reborn = true;
+      if (name === 'Shell Collector' || name === 'Southsea Busker')
+        t.battlecry = (p) => {
+          p.gold += 1;
+        };
+      return t;
+    };
+    const tier1 = [
+      'Annoy-o-Tron',
+      'Risen Rider',
+      'Scallywag',
+      'Southsea Busker',
+      'Sun-Bacon Relaxer',
+      'Wrath Weaver',
+    ];
+    const tier2 = [
+      'Shell Collector',
+      'Eternal Knight',
+      'Ripsnarl Captain',
+      'Scarlet Skull',
+      'Sellemental',
+      'Selfless Hero',
+    ];
+    CARD_TEMPLATES = [...tier1, ...tier2].map(pick).filter(Boolean);
+  } catch (err) {
+    console.error('Failed to load card data, using fallback set', err);
+    CARD_TEMPLATES = FALLBACK_CARD_TEMPLATES.slice();
+  }
 }
 
 loadTemplates().then(() => {
