@@ -18,95 +18,7 @@ function createCard(template) {
   };
 }
 
-const CARD_TEMPLATES = [
-  // Tier 1
-  {
-    name: "Alleycat",
-    attack: 1,
-    hp: 1,
-    tier: 1,
-    battlecry: (player) => {
-      if (player.board.length < BOARD_LIMIT) {
-        player.board.push(createCard({ name: "Tabbycat", attack: 1, hp: 1, tier: 1 }));
-      }
-    },
-  },
-  {
-    name: "Murloc Tidehunter",
-    attack: 2,
-    hp: 1,
-    tier: 1,
-    battlecry: (player) => {
-      if (player.board.length < BOARD_LIMIT) {
-        player.board.push(createCard({ name: "Murloc Scout", attack: 1, hp: 1, tier: 1 }));
-      }
-    },
-  },
-  {
-    name: "Deck Swabbie",
-    attack: 2,
-    hp: 2,
-    tier: 1,
-    battlecry: (player) => {
-      player.upgradeCost = Math.max(player.upgradeCost - 1, MIN_UPGRADE_COST);
-    },
-  },
-  {
-    name: "Evolving Chromawing",
-    attack: 1,
-    hp: 4,
-    tier: 1,
-    onTavernUpgrade: (player, self) => {
-      self.attack += 1;
-    },
-  },
-
-  // Tier 2
-  {
-    name: "Rockpool Hunter",
-    attack: 2,
-    hp: 3,
-    tier: 2,
-    battlecry: (player, self) => {
-      const targets = player.board.filter((c) => c.id !== self.id);
-      if (targets.length) {
-        const target = rand(targets);
-        target.attack += 1;
-        target.hp += 1;
-        target.maxHp += 1;
-      }
-    },
-  },
-  {
-    name: "Nathrezim Overseer",
-    attack: 2,
-    hp: 3,
-    tier: 2,
-    battlecry: (player, self) => {
-      const targets = player.board.filter((c) => c.id !== self.id);
-      if (targets.length) {
-        const target = rand(targets);
-        target.attack += 2;
-        target.hp += 2;
-        target.maxHp += 2;
-      }
-    },
-  },
-  {
-    name: "Micro Mummy",
-    attack: 1,
-    hp: 2,
-    tier: 2,
-    reborn: true,
-    endOfTurn: (player, self) => {
-      const targets = player.board.filter((c) => c.id !== self.id);
-      if (targets.length) {
-        const target = rand(targets);
-        target.attack += 1;
-      }
-    },
-  },
-];
+let CARD_TEMPLATES = [];
 
 // Game constants
 const GOLD_PER_CARD = 3;
@@ -441,9 +353,7 @@ function refreshShop(player) {
   const templates = CARD_TEMPLATES.filter((t) => t.tier <= player.tavernTier);
   player.shop = Array.from({ length: 3 }, () => createCard(rand(templates)));
 }
-
 // Initial shop refresh
-players.forEach(refreshShop);
 
 function checkGameOver() {
   const defeated = players.find((p) => p.health <= 0);
@@ -488,5 +398,27 @@ function handleUpgrade(playerId) {
   render();
 }
 
-// Initial render
-render(); 
+
+// Load real card data and then start the game
+async function loadTemplates() {
+  const res = await fetch('bg_minions_active.json');
+  const data = await res.json();
+  const map = new Map(data.data.map(m => [m.name, m]));
+  const pick = (name) => {
+    const m = map.get(name);
+    if (!m) return null;
+    const t = { name: m.name, attack: m.attack, hp: m.health, tier: m.tier };
+    if (name === 'Risen Rider' || name === 'Scarlet Skull') t.reborn = true;
+    if (name === 'Shell Collector' || name === 'Southsea Busker') t.battlecry = (p) => { p.gold += 1; };
+    return t;
+  };
+  const tier1 = ['Annoy-o-Tron','Risen Rider','Scallywag','Southsea Busker','Sun-Bacon Relaxer','Wrath Weaver'];
+  const tier2 = ['Shell Collector','Eternal Knight','Ripsnarl Captain','Scarlet Skull','Sellemental','Selfless Hero'];
+  CARD_TEMPLATES = [...tier1, ...tier2].map(pick).filter(Boolean);
+}
+
+loadTemplates().then(() => {
+  players.forEach(refreshShop);
+  render();
+});
+
