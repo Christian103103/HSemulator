@@ -40,6 +40,14 @@ body {
   font-size: 12px;
 }
 
+.card .abilities {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 10px;
+  text-align: left;
+}
+
 .fade-out {
   animation: fadeOut 0.3s forwards;
 }

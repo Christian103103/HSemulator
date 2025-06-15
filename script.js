@@ -10,6 +10,10 @@ function createCard(template) {
     hp: template.hp,
     maxHp: template.hp, // remember original health so we can restore between rounds
     tier: template.tier || 1, // placeholder for future
+    battlecry: template.battlecry,
+    endOfTurn: template.endOfTurn,
+    reborn: template.reborn,
+    usedReborn: false,
   };
 }
 
@@ -20,6 +24,40 @@ const CARD_TEMPLATES = [
   { name: "Glass Cannon", attack: 3, hp: 1, tier: 1 },
   { name: "Glass Cannon 2", attack: 3, hp: 1, tier: 1 },
   { name: "Brute", attack: 3, hp: 3, tier: 2 },
+  // New example cards with basic abilities
+  {
+    name: "Squire",
+    attack: 1,
+    hp: 2,
+    tier: 1,
+    battlecry: (player, self) => {
+      const targets = player.board.filter((c) => c.id !== self.id);
+      if (targets.length) {
+        const target = rand(targets);
+        target.attack += 1;
+        target.hp += 1;
+        target.maxHp += 1;
+      }
+    },
+  },
+  {
+    name: "Reborn Whelp",
+    attack: 2,
+    hp: 1,
+    tier: 2,
+    reborn: true,
+  },
+  {
+    name: "Caretaker",
+    attack: 2,
+    hp: 2,
+    tier: 2,
+    endOfTurn: (player) => {
+      player.board.forEach((c) => {
+        c.hp = Math.min(c.hp + 1, c.maxHp);
+      });
+    },
+  },
 ];
 
 // Game constants
@@ -99,9 +137,18 @@ function renderZone(container, player, zoneName) {
     cardEl.dataset.zone = zoneName;
     cardEl.dataset.cardId = card.id;
 
+    const abilityParts = [];
+    if (card.battlecry) abilityParts.push("Battlecry");
+    if (card.endOfTurn) abilityParts.push("EoT");
+    if (card.reborn) abilityParts.push("Reborn");
+    const abilities = abilityParts.length
+      ? `<div class="abilities">${abilityParts.join(", ")}</div>`
+      : "";
+
     cardEl.innerHTML = `
       <div>${card.name}</div>
       <div class="stats">${card.attack}/${card.hp}</div>
+      ${abilities}
     `;
 
     // Clicks allowed only during buy phase
@@ -145,6 +192,9 @@ function onCardClick(e) {
     }
     const [card] = player.hand.splice(idx, 1);
     player.board.push(card);
+    if (card.battlecry) {
+      card.battlecry(player, card);
+    }
   }
 
   render();
@@ -186,6 +236,17 @@ function startCombatPhase() {
   phase = "combat";
   resultsEl.textContent = "";
 
+  // Trigger end-of-turn effects before combat begins
+  players.forEach((p) => {
+    p.board.forEach((c) => {
+      if (c.endOfTurn) {
+        c.endOfTurn(p, c);
+      }
+    });
+  });
+
+  render();
+
   const combatLog = simulateCombat();
   render(); // show survivors only
 
@@ -205,11 +266,13 @@ function nextTurn() {
     // Restore health for surviving minions
     p.board.forEach((c) => {
       c.hp = c.maxHp;
+      c.usedReborn = false;
     });
 
     // Resurrect minions that died last combat
     p.graveyard.forEach((c) => {
       c.hp = c.maxHp;
+      c.usedReborn = false;
       p.board.push(c);
     });
     p.graveyard = [];
@@ -240,6 +303,19 @@ function updateActionButton() {
   }
 }
 
+// Handle minion death and reborn logic
+function processDeath(card, player, index, log) {
+  if (card.reborn && !card.usedReborn) {
+    card.usedReborn = true;
+    card.hp = 1;
+    log.push(`→ ${card.name} is reborn!`);
+  } else {
+    log.push(`→ ${card.name} dies.`);
+    player.board.splice(index, 1);
+    player.graveyard.push(card);
+  }
+}
+
 // Core combat simulation (extremely simplified)
 function simulateCombat() {
   const log = ["Combat begins!"];
@@ -267,14 +343,10 @@ function simulateCombat() {
     attacker.hp -= defender.attack;
 
     if (defender.hp <= 0) {
-      log.push(`→ ${defender.name} dies.`);
-      defenderPlayer.board.splice(targetIndex, 1);
-      defenderPlayer.graveyard.push(defender);
+      processDeath(defender, defenderPlayer, targetIndex, log);
     }
     if (attacker.hp <= 0) {
-      log.push(`→ ${attacker.name} dies.`);
-      attackerPlayer.board.splice(0, 1); // attacker is always index 0
-      attackerPlayer.graveyard.push(attacker);
+      processDeath(attacker, attackerPlayer, 0, log);
     }
 
     // Switch turns
